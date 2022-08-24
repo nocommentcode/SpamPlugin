@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "zoomsense-plugin"
+  },
+  "targets": {}
+}

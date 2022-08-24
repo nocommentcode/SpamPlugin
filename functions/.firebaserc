@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "staging": "zoomsense-plugin"
+  },
+  "targets": {},
+  "etags": {}
+}

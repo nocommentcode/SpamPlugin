@@ -1,0 +1,51 @@
+{
+  "name": "app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "npx serve && vue-cli-service serve",
+    "build": "vue-cli-service build --target lib --formats commonjs --name 'PluginExample' --no-clean src/library.js",
+    "lint": "vue-cli-service lint"
+  },
+  "dependencies": {
+    "@paciolan/remote-module-loader": "^2.6.2",
+    "core-js": "^3.6.5",
+    "vue": "^2.6.11",
+    "webpack-external-import": "^2.2.4"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "~4.5.15",
+    "@vue/cli-plugin-eslint": "~4.5.15",
+    "@vue/cli-service": "~4.5.15",
+    "babel-eslint": "^10.1.0",
+    "eslint": "^6.7.2",
+    "eslint-plugin-vue": "^6.2.2",
+    "import-http": "0.3.1",
+    "vue-template-compiler": "^2.6.11",
+    "vuefire": "^2.2.5",
+    "firebase": "8.10.0",
+    "serve": "12.0.1"
+  },
+  "eslintConfig": {
+    "ignorePatterns": [
+      "**/dist/*.js"
+    ],
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "extends": [
+      "plugin:vue/essential",
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "parser": "babel-eslint"
+    },
+    "rules": {}
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
