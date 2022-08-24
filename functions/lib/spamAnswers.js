@@ -11,49 +11,55 @@ exports.spamAnswers = functions.database
     .ref("/data/chats/{meetingId}/{sensor}/{chatId}")
     .onCreate(async (value, context) => {
     const { meetingId, chatId } = context.params;
-    const { msg: messageContent, msgSender, msgSenderName, timestamp, } = value.val();
-    //if anything is missing from the message exit the function
-    // if (!messageContent || !msgSender || !msgSenderName || !timestamp) return;
-    await db.ref(`/data/spamAnswers/${meetingId}/0/answers/`).push({
-        senderId: msgSender,
-        senderName: msgSenderName,
-    });
     //Check if plugin is enabled
     const config = (await db
         .ref(`/config/${meetingId}/current/currentState/plugins/spammessages`)
         .get()).val();
     if (!config || !config.enabled)
         return;
-    //getting the round information from the config file
-    const roundNumber = db_1.getRoundNumber(meetingId);
+    // ensure not a control message
     if (chatId === "message")
         return;
     //get the message content
-    //   const {
-    //     msg: messageContent,
-    //     msgSender,
-    //     msgSenderName,
-    //     timestamp,
-    //   } = snapshot.val();
-    //   //if anything is missing from the message exit the function
-    //  // if (!messageContent || !msgSender || !msgSenderName || !timestamp) return;
-    //   setValInDb(`data/spamAnswers/${meetingId}/${roundNumber}/answers`, {
-    //     senderId: msgSender,
-    //     senderName: msgSenderName,
-    //   });
-    const chatText = messageContent.toLowerCase().trim();
-    const currentSection = (await db.ref(`/config/${meetingId}/current/currentSection`).get()).val();
-    var query = db.ref(`/config/${meetingId}/current/currentState/plugins/spamMessages/${roundNumber}/solutions`);
-    let correct = false;
-    query.once("value").then(function (snapshot) {
-        snapshot.forEach(function (childSnapshot) {
-            if (childSnapshot.val().equalTo(chatText)) {
-                correct = true;
-            }
+    const { msg: messageContent, msgSender, msgSenderName, timestamp, } = value.val();
+    //if anything is missing from the message exit the function
+    if (!messageContent || !msgSender || !msgSenderName || !timestamp)
+        return;
+    // check if answer is correct
+    var answers = (await db
+        .ref(`/config/${meetingId}/current/currentState/plugins/spammessages/solutions`)
+        .get()).val();
+    const answerCorrect = answers.find((val) => val === messageContent.toLowerCase().trim()) !==
+        undefined;
+    if (answerCorrect) {
+        // store answer in db
+        const roundName = await db_1.getValFromDb(`/config/${meetingId}/current/currentState/plugins/spammessages/roundName`);
+        await db_1.setValInDb(`data/spamAnswers/${meetingId}/${roundName}/answers`, {
+            senderId: msgSender,
+            senderName: msgSenderName,
+            answer: messageContent,
+            timestamp,
         });
-    });
-    if (correct) {
-        await db_1.scheduleFirebaseUpdate(meetingId, timestamp, `config/${meetingId}/current/currentSection`, currentSection.data + 1);
+        const teamId = await db_1.getPlayersTeam(msgSender, meetingId);
+        // update score for the team
+        // send chat to this team to tell them they got the correct answer
+        const teamBotId = await db_1.getBotForTeam(meetingId, teamId);
+        await db_1.broadcastMessage(meetingId, teamBotId, `Well done! ${messageContent} was the correct answer, we are moving on to the next round`);
+        // send message to all other teams telling them the correct answer
+        const botIds = await db_1.getAllBots(meetingId);
+        botIds.forEach(async (id) => {
+            // if is winning team's bot ignore
+            if (id === teamBotId) {
+                return;
+            }
+            await db_1.broadcastMessage(meetingId, id, `Unfortunately, Team ${teamId} guessed the correct answer (${messageContent}), better luck next time!`);
+        });
+        // move to next round
+        let { currentSection } = (await db.ref(`/config/${meetingId}/current`).get()).val();
+        if (typeof currentSection == "string") {
+            currentSection = parseInt(currentSection);
+        }
+        await db_1.scheduleFirebaseUpdate(meetingId, timestamp, `config/${meetingId}/current/currentSection`, parseInt(currentSection) + 1);
     }
 });
 //# sourceMappingURL=spamAnswers.js.map

@@ -1,8 +1,4 @@
-# Zoomsense Plugin Example
+# Spam Round plugin
 
-- Functions folder has the firebase functions in
-
-- App folder has the UI controls in (vue-cli-service build --target lib src/library.js) to generate output files into the dist dir (notes for CI)
-
-- package.json has metadata on the plugin in
-
+Check the demo_config.txt file for how to configure this plugin
+Basically, each question is a separate section of the config file, there can be more than 1 allowable answer.

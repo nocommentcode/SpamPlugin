@@ -1,6 +1,15 @@
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
-import { getRoundNumber, scheduleFirebaseUpdate } from "./db";
+import {
+  broadcastMessage,
+  getAllBots,
+  getBotForTeam,
+  getPlayersTeam,
+  getValFromDb,
+  incrementTeamsScore,
+  scheduleFirebaseUpdate,
+  setValInDb,
+} from "./db";
 
 //const { snapshot } = require("firebase-functions");
 //const admin = require("firebase-admin");
@@ -10,6 +19,18 @@ export const spamAnswers = functions.database
   .onCreate(async (value, context) => {
     const { meetingId, chatId } = context.params;
 
+    //Check if plugin is enabled
+    const config = (
+      await db
+        .ref(`/config/${meetingId}/current/currentState/plugins/spammessages`)
+        .get()
+    ).val();
+    if (!config || !config.enabled) return;
+
+    // ensure not a control message
+    if (chatId === "message") return;
+
+    //get the message content
     const {
       msg: messageContent,
       msgSender,
@@ -18,65 +39,78 @@ export const spamAnswers = functions.database
     } = value.val();
 
     //if anything is missing from the message exit the function
-    // if (!messageContent || !msgSender || !msgSenderName || !timestamp) return;
-    await db.ref(`/data/spamAnswers/${meetingId}/0/answers/`).push({
-      senderId: msgSender,
-      senderName: msgSenderName,
-    });
+    if (!messageContent || !msgSender || !msgSenderName || !timestamp) return;
 
-    // //Check if plugin is enabled
-    // const config = (
-    //   await db
-    //     .ref(`/config/${meetingId}/current/currentState/plugins/spammessages`)
-    //     .get()
-    // ).val();
-    // if (!config || !config.enabled) return;
+    // check if answer is correct
+    var answers: string[] = (
+      await db
+        .ref(
+          `/config/${meetingId}/current/currentState/plugins/spammessages/solutions`
+        )
+        .get()
+    ).val();
+    const answerCorrect =
+      answers.find((val) => val === messageContent.toLowerCase().trim()) !==
+      undefined;
 
-    // //getting the round information from the config file
-    // const roundNumber = getRoundNumber(meetingId);
+    if (answerCorrect) {
+      // store answer in db
+      const roundName = await getValFromDb(
+        `/config/${meetingId}/current/currentState/plugins/spammessages/roundName`
+      );
+      await setValInDb(`data/spamAnswers/${meetingId}/${roundName}/answers`, {
+        senderId: msgSender,
+        senderName: msgSenderName,
+        answer: messageContent,
+        timestamp,
+      });
 
-    // if (chatId === "message") return;
+      const teamId = await getPlayersTeam(msgSender, meetingId);
+      // update score for the team
+      var questionWeight: number = (
+        await db
+          .ref(
+            `/config/${meetingId}/current/currentState/plugins/spammessages/questionWeight`
+          )
+          .get()
+      ).val();
+      await incrementTeamsScore(meetingId, teamId, questionWeight);
 
-    // //get the message content
-    // //   const {
-    // //     msg: messageContent,
-    // //     msgSender,
-    // //     msgSenderName,
-    // //     timestamp,
-    // //   } = snapshot.val();
+      // send chat to this team to tell them they got the correct answer
+      const teamBotId = await getBotForTeam(meetingId, teamId);
+      await broadcastMessage(
+        meetingId,
+        teamBotId,
+        `Well done! ${messageContent} was the correct answer, we are moving on to the next round`
+      );
 
-    // //   //if anything is missing from the message exit the function
-    // //  // if (!messageContent || !msgSender || !msgSenderName || !timestamp) return;
+      // send message to all other teams telling them the correct answer
+      const botIds = await getAllBots(meetingId);
+      botIds.forEach(async (id) => {
+        // if is winning team's bot ignore
+        if (id === teamBotId) {
+          return;
+        }
+        await broadcastMessage(
+          meetingId,
+          id,
+          `Unfortunately, Team ${teamId} guessed the correct answer (${messageContent}), better luck next time!`
+        );
+      });
 
-    // //   setValInDb(`data/spamAnswers/${meetingId}/${roundNumber}/answers`, {
-    // //     senderId: msgSender,
-    // //     senderName: msgSenderName,
-    // //   });
+      // move to next round
+      let { currentSection } = (
+        await db.ref(`/config/${meetingId}/current`).get()
+      ).val();
+      if (typeof currentSection == "string") {
+        currentSection = parseInt(currentSection);
+      }
 
-    // const chatText = messageContent.toLowerCase().trim();
-    // const currentSection = (
-    //   await db.ref(`/config/${meetingId}/current/currentSection`).get()
-    // ).val();
-
-    // var query = db.ref(
-    //   `/config/${meetingId}/current/currentState/plugins/spamMessages/${roundNumber}/solutions`
-    // );
-
-    // let correct = false;
-    // query.once("value").then(function (snapshot) {
-    //   snapshot.forEach(function (childSnapshot) {
-    //     if (childSnapshot.val().equalTo(chatText)) {
-    //       correct = true;
-    //     }
-    //   });
-    // });
-
-    // if (correct) {
-    //   await scheduleFirebaseUpdate(
-    //     meetingId,
-    //     timestamp,
-    //     `config/${meetingId}/current/currentSection`,
-    //     currentSection.data + 1
-    //   );
-    // }
+      await scheduleFirebaseUpdate(
+        meetingId,
+        timestamp,
+        `config/${meetingId}/current/currentSection`,
+        parseInt(currentSection) + 1
+      );
+    }
   });
