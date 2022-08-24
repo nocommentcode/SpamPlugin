@@ -9,4 +9,4 @@ exports.err = (err) => ({
     isErr: true,
     err,
 });
-//# sourceMappingURL=Result.js.map
+//# sourceMappingURL=result.js.map
