@@ -1,0 +1,32 @@
+name: _default
+tags:
+  - Default
+schedule:
+  script:
+    - name: Question_1
+      advance:
+        type: manual
+      plugins:
+        - plugin: spammessages
+          settings:
+            roundName: "question_1"
+            solutions: ["correct_answer_q1"]
+            questionWeight: 1
+    - name: Question_2
+      advance:
+        type: manual
+      plugins:
+        - plugin: spammessages
+          settings:
+            roundName: "question_2"
+            solutions: ["correct_answer_q2"]
+            questionWeight: 1
+    - name: Question_3
+      advance:
+        type: manual
+      plugins:
+        - plugin: spammessages
+          settings:
+            roundName: "question_3"
+            solutions: ["correct_answer_q3"]
+            questionWeight: 1
