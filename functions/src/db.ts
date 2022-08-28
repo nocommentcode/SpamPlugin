@@ -1,3 +1,5 @@
+import { Team, Teams } from "./types";
+
 const admin = require("firebase-admin");
 const db = admin.database();
 
@@ -6,6 +8,7 @@ export const getValFromDb = async (path: string): Promise<unknown> =>
 
 export const setValInDb = async (path: string, val: unknown): Promise<void> =>
   await db.ref(path).set(val);
+
 export const updateValInDb = async (
   path: string,
   val: Record<string, unknown>
@@ -43,8 +46,31 @@ export const getPlayersTeam = async (
   msgSenderId: string,
   meetingId: string
 ): Promise<string> => {
-  // TODO: Need to acess the team's id via the players id
-  return "Team1";
+  const teams = (await getValFromDb(
+    `data/plugins/teamPlugin/${meetingId}`
+  )) as Teams;
+
+  const teamId = Object.entries(teams)
+    .map(([teamId]) => {
+      // find member in this team with the id wer'e looking fo
+      const member = teams[teamId].members.find(
+        (member) => member.userId === msgSenderId
+      );
+
+      if (member) {
+        return teamId;
+      }
+      return undefined;
+    })
+    // find only the teamId
+    .find((teamId) => teamId !== undefined);
+
+  if (!teamId) {
+    // teamId not found -> error
+    return "";
+  }
+
+  return teamId;
 };
 
 /**
@@ -57,16 +83,30 @@ export const getBotForTeam = async (
   meetingId: string,
   teamId: string
 ): Promise<string> => {
-  // TODO: Need to get a bot id from a team id
-  return "ZoomSensor_1";
+  const team = (await getValFromDb(
+    `data/plugins/teamPlugin/${meetingId}/${teamId}`
+  )) as Team;
+  return team.sensorId;
 };
 
+/**
+ * Increments a team's score
+ * @param meetingId the id of the meeting
+ * @param teamId the id of the team
+ * @param scoreIncrement the amount to increment the score by
+ * @param timestamp the timestamp
+ */
 export const incrementTeamsScore = async (
   meetingId: string,
   teamId: string,
-  scoreIncrement: number
+  scoreIncrement: number,
+  timestamp: number
 ): Promise<void> => {
-  // TODO: Need to increment the team's score
+  await setValInDb(`data/plugins/leaderboard/${meetingId}/scoreEvents`, {
+    amount: scoreIncrement,
+    teamId,
+    timestamp,
+  });
 };
 
 export const getAllBots = async (meetingId: string): Promise<string[]> => {
