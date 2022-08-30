@@ -1,4 +1,4 @@
-import { Team, Teams } from "./types";
+import { isTeams, Team, Teams } from "./types";
 
 const admin = require("firebase-admin");
 const db = admin.database();
@@ -46,9 +46,10 @@ export const getPlayersTeam = async (
   msgSenderId: string,
   meetingId: string
 ): Promise<string> => {
-  const teams = (await getValFromDb(
-    `data/plugins/teamPlugin/${meetingId}`
-  )) as Teams;
+  const teams = await getValFromDb(`data/plugins/teamPlugin/${meetingId}`);
+  if (!isTeams(teams)) {
+    return "";
+  }
 
   const teamId = Object.entries(teams)
     .map(([teamId]) => {
