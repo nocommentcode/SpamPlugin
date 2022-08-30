@@ -55,6 +55,7 @@ export const spamAnswers = functions.database
 
     if (answerCorrect) {
       const teamId = await getPlayersTeam(msgSender, meetingId);
+      if (!teamId) return;
 
       // store answer in db
       const roundName = await getValFromDb(
@@ -80,6 +81,8 @@ export const spamAnswers = functions.database
 
       // send chat to this team to tell them they got the correct answer
       const teamBotId = await getBotForTeam(meetingId, teamId);
+      if (!teamBotId) return;
+
       await broadcastMessage(
         meetingId,
         teamBotId,

@@ -1,4 +1,4 @@
-import { isTeams, Team, Teams } from "./types";
+import { isTeam, isTeams, Team, Teams } from "./types";
 
 const admin = require("firebase-admin");
 const db = admin.database();
@@ -45,10 +45,10 @@ export const scheduleFirebaseUpdate = async (
 export const getPlayersTeam = async (
   msgSenderId: string,
   meetingId: string
-): Promise<string> => {
+): Promise<string | null> => {
   const teams = await getValFromDb(`data/plugins/teamPlugin/${meetingId}`);
   if (!isTeams(teams)) {
-    return "";
+    return null;
   }
 
   const teamId = Object.entries(teams)
@@ -68,7 +68,7 @@ export const getPlayersTeam = async (
 
   if (!teamId) {
     // teamId not found -> error
-    return "";
+    return null;
   }
 
   return teamId;
@@ -83,10 +83,13 @@ export const getPlayersTeam = async (
 export const getBotForTeam = async (
   meetingId: string,
   teamId: string
-): Promise<string> => {
-  const team = (await getValFromDb(
+): Promise<string | null> => {
+  const team = await getValFromDb(
     `data/plugins/teamPlugin/${meetingId}/${teamId}`
-  )) as Team;
+  );
+  if (!isTeam(team)) {
+    return null;
+  }
   return team.sensorId;
 };
 

@@ -24,7 +24,7 @@ const isUser = (value: unknown): value is User => {
   );
 };
 
-const isTeam = (value: unknown): value is Team => {
+export const isTeam = (value: unknown): value is Team => {
   if (!value || typeof value !== "object") return false;
   const record = value as Record<string, unknown>;
   return (
